@@ -2,6 +2,7 @@ const express = require('express');
 const Transaction = require('../models/transaction');
 const Customer = require('../models/customer');
 const router = express.Router();
+const AutoIncrement = require('mongoose-sequence')(require('mongoose'));
 
 // Credit transaction
 router.post('/credit', async (req, res) => {
@@ -17,7 +18,6 @@ router.post('/credit', async (req, res) => {
         const customer = await Customer.findOne({ customerName });
         if (!customer) return res.status(404).send('Customer not found');
 
-        // Ensure customerId is treated as a Number
         const customerId = customer.customerId;
 
         // Calculate new balance and cash balance
@@ -68,10 +68,6 @@ router.post('/debit', async (req, res) => {
         const currentBalance = lastTransaction?.balance || 0;
         const currentCashBalance = lastTransaction?.cashBalance || 0;
 
-        if (amount > currentBalance) {
-            return res.status(400).send('Insufficient balance');
-        }
-
         if (amount > currentCashBalance) {
             return res.status(400).send('Insufficient cash balance');
         }
@@ -94,6 +90,56 @@ router.post('/debit', async (req, res) => {
         res.send(transaction);
     } catch (error) {
         res.status(500).send(`Error processing debit transaction: ${error.message}`);
+    }
+});
+
+// Calculate total credit, debit, and difference with cashBalance
+router.get('/calculate/:customerName', async (req, res) => {
+    try {
+        const { customerName } = req.params;
+
+        // Find the customer by customerName
+        const customer = await Customer.findOne({ customerName });
+        if (!customer) return res.status(404).send('Customer not found');
+
+        const customerId = customer.customerId;
+
+        // Fetch all transactions for the customer
+        const transactions = await Transaction.find({ customerId });
+
+        // Calculate total credit, debit, and cashBalance
+        const totalCredit = transactions.reduce((sum, txn) => sum + txn.credit, 0);
+        const totalDebit = transactions.reduce((sum, txn) => sum + txn.debit, 0);
+        const lastTransaction = transactions[transactions.length - 1];
+        const cashBalance = lastTransaction?.cashBalance || 0;
+ 
+        // Calculate the difference
+        const difference = totalCredit - totalDebit - cashBalance;
+ 
+        res.send({
+            customerName,
+            totalCredit,
+            totalDebit,
+            cashBalance,
+            difference
+        });
+    } catch (error) {
+        res.status(500).send(`Error calculating totals: ${error.message}`);
+    }
+});
+
+// Delete a transaction by transactionId
+router.delete('/delete/:transactionId', async (req, res) => {
+    try {
+        const { transactionId } = req.params;
+
+        // Find and delete the transaction by transactionId
+        const transaction = await Transaction.findOneAndDelete({ transactionId });
+        if (!transaction) return res.status(404).send('Transaction not found');
+
+        res.send({ message: 'Transaction deleted successfully', transaction });
+    } catch (error) {
+        res.status(500).send(`Error deleting transaction: ${error.message}`);
     }
 });
 

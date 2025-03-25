@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 // Define the transaction schema and model
 const transactionSchema = new mongoose.Schema({
@@ -8,8 +9,12 @@ const transactionSchema = new mongoose.Schema({
     credit: { type: Number, default: 0 }, // Credit amount
     debit: { type: Number, default: 0 }, // Debit amount
     balance: { type: Number, required: true }, // Remaining balance
-    cashBalance : { type: Number, required: true } // Remaining cash balance
+    cashBalance: { type: Number, required: true }, // Remaining cash balance
+    transactionId: { type: Number } // Auto-increment field
 });
+
+// Add auto-increment plugin for transactionId
+transactionSchema.plugin(AutoIncrement, { inc_field: 'transactionId' });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 

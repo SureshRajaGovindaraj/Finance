@@ -14,21 +14,26 @@ router.post('/credit', async (req, res) => {
         }
 
         // Find the customer by customerName
-        const customer = await Customer.findOne({ name: customerName });
+        const customer = await Customer.findOne({ customerName });
         if (!customer) return res.status(404).send('Customer not found');
 
-        // Calculate new balance
-        const lastTransaction = await Transaction.findOne({ customer_id: customer.customer_id }).sort({ _id: -1 });
+        // Ensure customerId is treated as a Number
+        const customerId = customer.customerId;
+
+        // Calculate new balance and cash balance
+        const lastTransaction = await Transaction.findOne({ customerId }).sort({ _id: -1 });
         const newBalance = (lastTransaction?.balance || 0) + amount;
+        const newCashBalance = (lastTransaction?.cashBalance || 0) + amount;
 
         // Create a new transaction
         const transaction = new Transaction({
-            customer_id: customer.customer_id,
-            customerName: customer.name,
+            customerId,
+            customerName: customer.customerName,
             lastUpdated: new Date().toLocaleString('en-GB'), // Format: dd-mm-yyyy, hh:mm:ss
             credit: amount,
             debit: 0,
-            balance: newBalance
+            balance: newBalance,
+            cashBalance: newCashBalance
         });
 
         await transaction.save();
@@ -54,27 +59,35 @@ router.post('/debit', async (req, res) => {
         }
 
         // Find the customer by customerName
-        const customer = await Customer.findOne({ name: customerName });
+        const customer = await Customer.findOne({ customerName });
         if (!customer) return res.status(404).send('Customer not found');
+        const customerId = customer.customerId;
 
         // Calculate new balance
-        const lastTransaction = await Transaction.findOne({ customer_id: customer.customer_id }).sort({ _id: -1 });
+        const lastTransaction = await Transaction.findOne({ customerId }).sort({ _id: -1 });
         const currentBalance = lastTransaction?.balance || 0;
+        const currentCashBalance = lastTransaction?.cashBalance || 0;
 
         if (amount > currentBalance) {
             return res.status(400).send('Insufficient balance');
         }
 
+        if (amount > currentCashBalance) {
+            return res.status(400).send('Insufficient cash balance');
+        }
+
         const newBalance = currentBalance - amount;
+        const newCashBalance = currentCashBalance - amount;
 
         // Create a new transaction
         const transaction = new Transaction({
-            customer_id: customer.customer_id,
-            customerName: customer.name,
+            customerId,
+            customerName: customer.customerName,
             lastUpdated: new Date().toLocaleString('en-GB'), // Format: dd-mm-yyyy, hh:mm:ss
             credit: 0,
             debit: amount,
-            balance: newBalance
+            balance: newBalance,
+            cashBalance: newCashBalance
         });
 
         await transaction.save();

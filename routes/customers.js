@@ -10,7 +10,7 @@ router.get('/allcustomers', async (req, res) => {
 });
 
 // Get a customer by any field
-router.post('/getCustomerData', async (req, res) => {
+router.get('/getCustomerData', async (req, res) => {
     const query = req.body; // Use request body to build the query
     const customer = await Customer.findOne(query);
     if (!customer) return res.status(404).send('Customer not found');
@@ -27,16 +27,16 @@ router.post('/', async (req, res) => {
 // Update a customer
 router.put('/update_customers', async (req, res) => {
     try {
-        const { customer_id, ...updateData } = req.body; // Extract customer_id and update data from the body
+        const { customerName, ...updateData } = req.body; // Extract customerId and update data from the body
 
-        // Validate if customer_id is provided
-        if (!customer_id) {
+        // Validate if customerId is provided
+        if (!customerName) {
             return res.status(400).send('Missing customer ID');
         }
 
-        // Find the customer by customer_id and update
+        // Find the customer by customerId and update
         const customer = await Customer.findOneAndUpdate(
-            { customer_id }, // Query by customer_id
+            { customerName }, // Query by customerId
             updateData,
             { new: true, runValidators: true } // Ensure validation and return updated document
         );
@@ -48,8 +48,8 @@ router.put('/update_customers', async (req, res) => {
 });
 
 // Delete a customer
-router.delete('/:id', async (req, res) => {
-    const customer = await Customer.findByIdAndRemove(req.params.id);
+router.delete('/:customerName', async (req, res) => {
+    const customer = await Customer.findByIdAndRemove(req.params.customerName);
     if (!customer) return res.status(404).send('Customer not found');
     res.send(customer);
 });
